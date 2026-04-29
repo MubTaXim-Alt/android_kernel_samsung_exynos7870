@@ -1532,11 +1532,12 @@ static struct my_hidg_mouse_descriptor my_hid_mouse_data = {
 static int hid_function_init(struct android_usb_function *f,
 				struct usb_composite_dev *cdev)
 {
-	return 0;
+	return ghid_setup(cdev->gadget, 2);
 }
 
 static void hid_function_cleanup(struct android_usb_function *f)
 {
+	ghid_cleanup();
 }
 
 static int hid_function_bind_config(struct android_usb_function *f,
