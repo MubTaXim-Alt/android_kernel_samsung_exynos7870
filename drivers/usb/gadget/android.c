@@ -1485,14 +1485,14 @@ struct my_hidg_func_descriptor {
 	unsigned char		protocol;
 	unsigned short		report_length;
 	unsigned short		report_desc_length;
-	unsigned char		report_desc[63];
+	unsigned char		report_desc[64];
 };
 
 static struct my_hidg_func_descriptor my_hid_data = {
 	.subclass		= 0, /* No subclass */
 	.protocol		= 1, /* Keyboard */
 	.report_length		= 8,
-	.report_desc_length	= 63,
+	.report_desc_length	= 64,
 	.report_desc		= {
 		0x05, 0x01, 0x09, 0x06, 0xa1, 0x01, 0x05, 0x07,
 		0x19, 0xe0, 0x29, 0xe7, 0x15, 0x00, 0x25, 0x01,
