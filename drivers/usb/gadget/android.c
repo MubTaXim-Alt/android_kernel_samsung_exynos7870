@@ -38,6 +38,7 @@
 #include "../function/f_fs.c"
 #include "../function/f_audio_source.c"
 #include "../function/f_midi.c"
+#include "../function/f_hid.c"
 #include "../function/f_mass_storage.c"
 #include "../function/f_adb.c"
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_MTP
@@ -1478,7 +1479,93 @@ static struct android_usb_function midi_function = {
 };
 
 
+/* --- HID SUPPORT START --- */
+struct my_hidg_func_descriptor {
+	unsigned char		subclass;
+	unsigned char		protocol;
+	unsigned short		report_length;
+	unsigned short		report_desc_length;
+	unsigned char		report_desc[63];
+};
+
+static struct my_hidg_func_descriptor my_hid_data = {
+	.subclass		= 0, /* No subclass */
+	.protocol		= 1, /* Keyboard */
+	.report_length		= 8,
+	.report_desc_length	= 63,
+	.report_desc		= {
+		0x05, 0x01, 0x09, 0x06, 0xa1, 0x01, 0x05, 0x07,
+		0x19, 0xe0, 0x29, 0xe7, 0x15, 0x00, 0x25, 0x01,
+		0x75, 0x01, 0x95, 0x08, 0x81, 0x02, 0x95, 0x01,
+		0x75, 0x08, 0x81, 0x01, 0x95, 0x05, 0x75, 0x01,
+		0x05, 0x08, 0x19, 0x01, 0x29, 0x05, 0x91, 0x02,
+		0x95, 0x01, 0x75, 0x03, 0x91, 0x01, 0x95, 0x06,
+		0x75, 0x08, 0x15, 0x00, 0x26, 0xff, 0x00, 0x05,
+		0x07, 0x19, 0x00, 0x29, 0xff, 0x81, 0x00, 0xc0
+	}
+};
+
+struct my_hidg_mouse_descriptor {
+	unsigned char		subclass;
+	unsigned char		protocol;
+	unsigned short		report_length;
+	unsigned short		report_desc_length;
+	unsigned char		report_desc[52];
+};
+
+static struct my_hidg_mouse_descriptor my_hid_mouse_data = {
+	.subclass		= 0, /* No subclass */
+	.protocol		= 2, /* Mouse */
+	.report_length		= 4,
+	.report_desc_length	= 52,
+	.report_desc		= {
+		0x05, 0x01, 0x09, 0x02, 0xa1, 0x01, 0x09, 0x01,
+		0xa1, 0x00, 0x05, 0x09, 0x19, 0x01, 0x29, 0x03,
+		0x15, 0x00, 0x25, 0x01, 0x95, 0x03, 0x75, 0x01,
+		0x81, 0x02, 0x95, 0x01, 0x75, 0x05, 0x81, 0x01,
+		0x05, 0x01, 0x09, 0x30, 0x09, 0x31, 0x09, 0x38,
+		0x15, 0x81, 0x25, 0x7f, 0x75, 0x08, 0x95, 0x03,
+		0x81, 0x06, 0xc0, 0xc0
+	}
+};
+
+static int hid_function_init(struct android_usb_function *f,
+				struct usb_composite_dev *cdev)
+{
+	return 0;
+}
+
+static void hid_function_cleanup(struct android_usb_function *f)
+{
+}
+
+static int hid_function_bind_config(struct android_usb_function *f,
+				struct usb_configuration *c)
+{
+	int ret;
+	ret = hidg_bind_config(c, (struct hidg_func_descriptor *)&my_hid_data, 0);
+	if (ret) {
+		pr_err("hid: bind_config keyboard failed\n");
+		return ret;
+	}
+	ret = hidg_bind_config(c, (struct hidg_func_descriptor *)&my_hid_mouse_data, 1);
+	if (ret) {
+		pr_err("hid: bind_config mouse failed\n");
+		return ret;
+	}
+	return 0;
+}
+
+static struct android_usb_function hid_function = {
+	.name		= "hid",
+	.init		= hid_function_init,
+	.cleanup	= hid_function_cleanup,
+	.bind_config	= hid_function_bind_config,
+};
+/* --- HID SUPPORT END --- */
+
 static struct android_usb_function *supported_functions[] = {
+	&hid_function,
 	&ffs_function,
 	&adb_function,
 	&acm_function,
