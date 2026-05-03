@@ -1505,6 +1505,7 @@ static struct my_hidg_func_descriptor my_hid_data = {
 	}
 };
 
+/* Bugfix: Disable mouse descriptor to avoid unused-variable warning
 struct my_hidg_mouse_descriptor {
 	unsigned char		subclass;
 	unsigned char		protocol;
@@ -1514,8 +1515,8 @@ struct my_hidg_mouse_descriptor {
 };
 
 static struct my_hidg_mouse_descriptor my_hid_mouse_data = {
-	.subclass		= 0, /* No subclass */
-	.protocol		= 2, /* Mouse */
+	.subclass		= 0,
+	.protocol		= 2,
 	.report_length		= 4,
 	.report_desc_length	= 52,
 	.report_desc		= {
@@ -1528,6 +1529,7 @@ static struct my_hidg_mouse_descriptor my_hid_mouse_data = {
 		0x81, 0x06, 0xc0, 0xc0
 	}
 };
+*/
 
 static int hid_function_init(struct android_usb_function *f,
 				struct usb_composite_dev *cdev)
