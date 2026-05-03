@@ -17,7 +17,7 @@ jobs:
     - name: Set up build environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev ccache bison flex git
+        sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev ccache bison flex git python3
 
     - name: Clone Google GCC Toolchain 4.9 (AArch64)
       run: |
@@ -32,6 +32,25 @@ jobs:
         export CROSS_COMPILE=aarch64-linux-android-4.9/bin/aarch64-linux-android-
         ./build_kernel.sh
 
+    - name: Download stock boot.img
+      run: |
+        # Download stock boot.img from GitHub Release
+        gh release download stock-boot -p "boot.img" -D /tmp/ || {
+          echo "::warning::Stock boot.img not found in releases. Uploading raw kernel only."
+          exit 0
+        }
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Repack boot_hid.img
+      if: hashFiles('/tmp/boot.img') != ''
+      run: |
+        python3 tools/repack_boot.py \
+          --stock-boot /tmp/boot.img \
+          --kernel arch/arm64/boot/Image \
+          --output boot_hid.img \
+          --pad-size 32768000
+
     - name: Upload kernel image
       uses: actions/upload-artifact@v4
       with:
@@ -39,3 +58,10 @@ jobs:
         path: |
           arch/arm64/boot/Image
           arch/arm64/boot/Image.gz
+
+    - name: Upload boot_hid.img
+      if: hashFiles('boot_hid.img') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: boot_hid
+        path: boot_hid.img
