@@ -33,23 +33,30 @@ jobs:
         ./build_kernel.sh
 
     - name: Download stock boot.img
+      id: download_boot
       run: |
-        # Download stock boot.img from GitHub Release
-        gh release download stock-boot -p "boot.img" -D /tmp/ || {
-          echo "::warning::Stock boot.img not found in releases. Uploading raw kernel only."
-          exit 0
-        }
+        echo "Downloading stock boot.img from release..."
+        if gh release download stock-boot -p "boot.img" -D . ; then
+          echo "boot_found=true" >> $GITHUB_OUTPUT
+          echo "✅ Downloaded boot.img ($(stat -c%s boot.img) bytes)"
+          ls -la boot.img
+        else
+          echo "boot_found=false" >> $GITHUB_OUTPUT
+          echo "::warning::Stock boot.img not found in releases."
+        fi
       env:
         GH_TOKEN: ${{ github.token }}
 
     - name: Repack boot_hid.img
-      if: hashFiles('/tmp/boot.img') != ''
+      if: steps.download_boot.outputs.boot_found == 'true'
       run: |
+        echo "Repacking boot image with HID kernel..."
         python3 tools/repack_boot.py \
-          --stock-boot /tmp/boot.img \
+          --stock-boot boot.img \
           --kernel arch/arm64/boot/Image \
           --output boot_hid.img \
           --pad-size 32768000
+        echo "✅ boot_hid.img created ($(stat -c%s boot_hid.img) bytes)"
 
     - name: Upload kernel image
       uses: actions/upload-artifact@v4
@@ -60,7 +67,7 @@ jobs:
           arch/arm64/boot/Image.gz
 
     - name: Upload boot_hid.img
-      if: hashFiles('boot_hid.img') != ''
+      if: steps.download_boot.outputs.boot_found == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: boot_hid
