@@ -75,7 +75,7 @@ static struct usb_interface_descriptor hidg_interface_desc = {
 	.bDescriptorType	= USB_DT_INTERFACE,
 	/* .bInterfaceNumber	= DYNAMIC */
 	.bAlternateSetting	= 0,
-	.bNumEndpoints		= 2,
+	.bNumEndpoints		= 1,
 	.bInterfaceClass	= USB_CLASS_HID,
 	/* .bInterfaceSubClass	= DYNAMIC */
 	/* .bInterfaceProtocol	= DYNAMIC */
@@ -122,7 +122,6 @@ static struct usb_descriptor_header *hidg_hs_descriptors[] = {
 	(struct usb_descriptor_header *)&hidg_interface_desc,
 	(struct usb_descriptor_header *)&hidg_desc,
 	(struct usb_descriptor_header *)&hidg_hs_in_ep_desc,
-	(struct usb_descriptor_header *)&hidg_hs_out_ep_desc,
 	NULL,
 };
 
@@ -156,7 +155,6 @@ static struct usb_descriptor_header *hidg_fs_descriptors[] = {
 	(struct usb_descriptor_header *)&hidg_interface_desc,
 	(struct usb_descriptor_header *)&hidg_desc,
 	(struct usb_descriptor_header *)&hidg_fs_in_ep_desc,
-	(struct usb_descriptor_header *)&hidg_fs_out_ep_desc,
 	NULL,
 };
 
@@ -500,9 +498,6 @@ static void hidg_disable(struct usb_function *f)
 	usb_ep_disable(hidg->in_ep);
 	hidg->in_ep->driver_data = NULL;
 
-	usb_ep_disable(hidg->out_ep);
-	hidg->out_ep->driver_data = NULL;
-
 	spin_lock_irqsave(&hidg->spinlock, flags);
 	list_for_each_entry_safe(list, next, &hidg->completed_out_req, list) {
 		free_ep_req(hidg->out_ep, list->req);
@@ -537,49 +532,6 @@ static int hidg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			goto fail;
 		}
 		hidg->in_ep->driver_data = hidg;
-	}
-
-
-	if (hidg->out_ep != NULL) {
-		/* restart endpoint */
-		if (hidg->out_ep->driver_data != NULL)
-			usb_ep_disable(hidg->out_ep);
-
-		status = config_ep_by_speed(f->config->cdev->gadget, f,
-					    hidg->out_ep);
-		if (status) {
-			ERROR(cdev, "config_ep_by_speed FAILED!\n");
-			goto fail;
-		}
-		status = usb_ep_enable(hidg->out_ep);
-		if (status < 0) {
-			ERROR(cdev, "Enable IN endpoint FAILED!\n");
-			goto fail;
-		}
-		hidg->out_ep->driver_data = hidg;
-
-		/*
-		 * allocate a bunch of read buffers and queue them all at once.
-		 */
-		for (i = 0; i < hidg->qlen && status == 0; i++) {
-			struct usb_request *req =
-					hidg_alloc_ep_req(hidg->out_ep,
-							  hidg->report_length);
-			if (req) {
-				req->complete = hidg_set_report_complete;
-				req->context  = hidg;
-				status = usb_ep_queue(hidg->out_ep, req,
-						      GFP_ATOMIC);
-				if (status)
-					ERROR(cdev, "%s queue req --> %d\n",
-						hidg->out_ep->name, status);
-			} else {
-				usb_ep_disable(hidg->out_ep);
-				hidg->out_ep->driver_data = NULL;
-				status = -ENOMEM;
-				goto fail;
-			}
-		}
 	}
 
 fail:
@@ -617,12 +569,6 @@ static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
 	ep->driver_data = c->cdev;	/* claim */
 	hidg->in_ep = ep;
 
-	ep = usb_ep_autoconfig(c->cdev->gadget, &hidg_fs_out_ep_desc);
-	if (!ep)
-		goto fail;
-	ep->driver_data = c->cdev;	/* claim */
-	hidg->out_ep = ep;
-
 	/* preallocate request and buffer */
 	status = -ENOMEM;
 	hidg->req = usb_ep_alloc_request(hidg->in_ep, GFP_KERNEL);
@@ -638,16 +584,12 @@ static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
 	hidg_interface_desc.bInterfaceProtocol = hidg->bInterfaceProtocol;
 	hidg_hs_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
 	hidg_fs_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
-	hidg_hs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
-	hidg_fs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
 	hidg_desc.desc[0].bDescriptorType = HID_DT_REPORT;
 	hidg_desc.desc[0].wDescriptorLength =
 		cpu_to_le16(hidg->report_desc_length);
 
 	hidg_hs_in_ep_desc.bEndpointAddress =
 		hidg_fs_in_ep_desc.bEndpointAddress;
-	hidg_hs_out_ep_desc.bEndpointAddress =
-		hidg_fs_out_ep_desc.bEndpointAddress;
 
 	status = usb_assign_descriptors(f, hidg_fs_descriptors,
 			hidg_hs_descriptors, NULL);
