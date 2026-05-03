@@ -385,9 +385,8 @@ static int hidg_setup(struct usb_function *f,
 	value	= __le16_to_cpu(ctrl->wValue);
 	length	= __le16_to_cpu(ctrl->wLength);
 
-	VDBG(cdev,
-	     "%s crtl_request : bRequestType:0x%x bRequest:0x%x Value:0x%x\n",
-	     __func__, ctrl->bRequestType, ctrl->bRequest, value);
+	printk(KERN_INFO "hidg_setup: bRequestType=0x%x bRequest=0x%x wValue=0x%x wLength=%d\n",
+	     ctrl->bRequestType, ctrl->bRequest, value, length);
 
 	switch ((ctrl->bRequestType << 8) | ctrl->bRequest) {
 	case ((USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
