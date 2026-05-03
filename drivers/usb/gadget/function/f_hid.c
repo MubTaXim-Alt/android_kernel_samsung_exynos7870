@@ -404,19 +404,47 @@ static int hidg_setup(struct usb_function *f,
 	case ((USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
 		  | HID_REQ_GET_PROTOCOL):
 		VDBG(cdev, "get_protocol\n");
-		goto stall;
+		/* Return report protocol (1) by default */
+		if (length) {
+			((u8 *)req->buf)[0] = 1; /* Report Protocol */
+			length = 1;
+		}
+		goto respond;
 		break;
 
 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
 		  | HID_REQ_SET_REPORT):
 		VDBG(cdev, "set_report | wLenght=%d\n", ctrl->wLength);
-		goto stall;
+		/* Accept and ignore SET_REPORT */
+		length = 0;
+		goto respond;
 		break;
 
 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
 		  | HID_REQ_SET_PROTOCOL):
 		VDBG(cdev, "set_protocol\n");
-		goto stall;
+		/* Accept and ignore SET_PROTOCOL */
+		length = 0;
+		goto respond;
+		break;
+
+	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
+		  | HID_REQ_SET_IDLE):
+		VDBG(cdev, "set_idle\n");
+		/* Accept and ignore SET_IDLE */
+		length = 0;
+		goto respond;
+		break;
+
+	case ((USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
+		  | HID_REQ_GET_IDLE):
+		VDBG(cdev, "get_idle\n");
+		/* Return idle rate 0 (infinite) */
+		if (length) {
+			((u8 *)req->buf)[0] = 0;
+			length = 1;
+		}
+		goto respond;
 		break;
 
 	case ((USB_DIR_IN | USB_TYPE_STANDARD | USB_RECIP_INTERFACE) << 8
