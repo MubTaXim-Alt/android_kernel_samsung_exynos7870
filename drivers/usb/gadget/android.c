@@ -1489,7 +1489,7 @@ struct my_hidg_func_descriptor {
 };
 
 static struct my_hidg_func_descriptor my_hid_data = {
-	.subclass		= 0, /* No subclass */
+	.subclass		= 1, /* Boot Interface Subclass */
 	.protocol		= 1, /* Keyboard */
 	.report_length		= 8,
 	.report_desc_length	= 64,
