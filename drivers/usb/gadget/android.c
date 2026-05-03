@@ -1549,11 +1549,15 @@ static int hid_function_bind_config(struct android_usb_function *f,
 		pr_err("hid: bind_config keyboard failed\n");
 		return ret;
 	}
+	/* Bugfix: Disable mouse binding.
+	   f_hid.c uses a static global `hidg_desc`. Binding a second interface overwrites
+	   the `wDescriptorLength` of the first, causing Windows Code 10 (I/O cancelled).
 	ret = hidg_bind_config(c, (struct hidg_func_descriptor *)&my_hid_mouse_data, 1);
 	if (ret) {
 		pr_err("hid: bind_config mouse failed\n");
 		return ret;
 	}
+	*/
 	return 0;
 }
 
